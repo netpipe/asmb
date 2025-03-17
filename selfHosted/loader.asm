@@ -1,34 +1,24 @@
-BITS 16
-ORG 0x7C00  ; BIOS loads bootloader at 0x7C00
+ORG 0x7E00  ; Load assembler at 0x7E00
 
-start:
-    cli
-    xor ax, ax
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
-    mov sp, 0x7C00  ; Stack grows downward from 0x7C00
-    sti
+load_assembler:
+    mov ah, 2       ; BIOS Read Sectors
+    mov al, 10      ; Read 10 sectors
+    mov ch, 0       ; Cylinder 0
+    mov cl, 2       ; Start at sector 2
+    mov dh, 0       ; Head 0
+    mov dl, 0       ; Drive 0 (floppy)
+    mov bx, 0x9000  ; Load at 0x9000
+    mov es, bx
+    mov bx, 0       ; Offset 0
+    int 13h         ; BIOS Disk Read
 
-    mov si, welcome_msg
+    jc disk_error   ; If carry flag set, print error
+
+    jmp 0x9000      ; Jump to assembler code
+
+disk_error:
+    mov si, err_msg
     call print_string
-
     jmp $
 
-; Prints a null-terminated string (BIOS INT 10h)
-print_string:
-    lodsb
-    or al, al
-    jz done
-    mov ah, 0x0E  ; BIOS Teletype
-    mov bh, 0x00
-    int 0x10
-    jmp print_string
-done:
-    ret
-
-welcome_msg db "Booting Assembler...", 0
-
-; Fill up to 510 bytes, then add boot signature
-times 510 - ($ - $$) db 0
-dw 0xAA55  ; Bootable signature
+err_msg db "Disk Read Error!", 0
