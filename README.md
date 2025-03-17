@@ -1,4 +1,6 @@
 # asmb
+https://github.com/netpipe/CommodoreOS/blob/main/asm/asmb/main.asm c64 version
+
 basic starting point for an x86 assembler wrote with nasm that should be able to compile itself after.
 
 

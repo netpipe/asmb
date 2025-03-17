@@ -1,34 +1,66 @@
-[BITS 16]  
-[ORG 0x7E00]  ; Loaded by bootloader at 0x7E00
+ORG 0x9000  ; Loaded at 0x9000 by bootloader
 
-mov si, input_code  ; Point to input assembly text
-mov di, output_code ; Point to output buffer
+start:
+    mov si, prompt_msg
+    call print_string
 
-parse_line:
-    lodsb          ; Load character from input
-    cmp al, 0      ; End of input?
-    je write_binary
-    cmp al, 'M'    ; Check for "MOV" instruction
-    jne parse_line
+    call read_line  ; Read user input
+    call assemble   ; Convert to machine code
+    call write_disk ; Write output file
 
-    ; If we detect "MOV AX, 4C00h"
-    mov byte [di], 0xB8  ; Opcode for "MOV AX, imm16"
+    jmp start
+
+; Reads a line of input from keyboard
+read_line:
+    mov di, buffer
+    xor cx, cx
+input_loop:
+    mov ah, 0x00  ; BIOS Keyboard Input
+    int 0x16      ; Wait for key
+    cmp al, 0x0D  ; Enter key?
+    je end_input
+    stosb         ; Store in buffer
+    inc cx
+    jmp input_loop
+end_input:
+    mov byte [di], 0  ; Null-terminate string
+    ret
+
+; Parses and translates assembly into binary
+assemble:
+    mov si, buffer
+    mov di, binary_output
+    lodsb
+    cmp al, 'M'
+    jne not_mov
+    lodsb
+    cmp al, 'O'
+    jne not_mov
+    lodsb
+    cmp al, 'V'
+    jne not_mov
+    ; Convert MOV AX, 4C00h to opcode B8 00 4C
+    mov byte [di], 0xB8
     inc di
-    mov word [di], 0x4C00 ; Operand (4C00h)
+    mov word [di], 0x4C00
     add di, 2
-    jmp parse_line
+not_mov:
+    ret
 
-write_binary:
-    mov ah, 0x03    ; BIOS write sector function
-    mov al, 1       ; Write 1 sector
-    mov ch, 0       ; Cylinder 0
-    mov cl, 3       ; Write to sector 3
-    mov dh, 0       ; Head 0
-    mov dl, 0       ; First floppy/hard disk
-    mov bx, output_code
-    int 0x13        ; Call BIOS to write the file
+; Writes compiled binary to disk using BIOS INT 13h
+write_disk:
+    mov ah, 3   ; BIOS Write
+    mov al, 1   ; 1 sector
+    mov ch, 0   ; Cylinder 0
+    mov cl, 3   ; Sector 3
+    mov dh, 0   ; Head 0
+    mov dl, 0   ; Drive 0 (Floppy)
+    mov bx, binary_output
+    mov es, bx
+    mov bx, 0
+    int 13h     ; Write sector
+    ret
 
-    jmp $           ; Infinite loop (halt)
-
-input_code db "MOV AX, 4C00h", 0
-output_code times 512 db 0  ; Output binary buffer
+prompt_msg db "Enter Assembly Code: ", 0
+buffer times 256 db 0
+binary_output times 512 db 0  ; Output buffer (one sector)
