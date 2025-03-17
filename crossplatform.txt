@@ -1,0 +1,23 @@
+🚀 How to Run It on Different OSes
+
+📀 DOS (16-bit)
+Assemble to .COM:
+nasm -f bin assembler.asm -o assembler.com
+Run in DOSBox or FreeDOS:
+dosbox assembler.com
+💻 Windows (32-bit)
+Modify it to use WinAPI (CreateFileA, WriteFile).
+Assemble with NASM:
+nasm -f win32 assembler.asm -o assembler.obj
+Link with GCC for Windows:
+gcc -m32 assembler.obj -o assembler.exe
+Run:
+assembler.exe
+🐧 Linux & Mac (64-bit)
+Modify syscalls (int 0x80 → syscall).
+Assemble for Linux:
+nasm -f elf32 assembler.asm -o assembler.o
+Link with ld:
+ld -m elf_i386 assembler.o -o assembler
+Run:
+./assembler
